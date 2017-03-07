@@ -1,0 +1,19 @@
+<?php
+/**
+ * Created by PhpStorm.
+ * User: shad
+ * Date: 6/30/16
+ * Time: 1:44 PM
+ */
+namespace interfaces;
+
+interface officesysteminterface
+{
+    public static function createstudent($studentnumber, $nationalcode, $name, $family, $cellphone, $address, $Email, $hometown, $registerdate, $birthday, $action, $conn);
+    public static function createparent($studentnumber, $nationalcode, $name, $family, $cellphone, $address, $Email, $hometown, $registerdate, $relationship, $action, $conn);
+    public static function searchdatabase($tbl, $field, $conn, $val);
+    public static function createteacher($nationalcode, $name, $family, $cellphone, $address, $Email, $hometown, $registerdate, $action, $conn);
+    public static function addclass($name , $level, $room, $teacherid, $capacity, $action, $conn);
+    public static function addlesson($nam, $hpw, $code, $level, $action, $conn);
+    public static function classification($possibleclass, $studentnumber, $action, $conn);
+}
