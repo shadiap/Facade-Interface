@@ -1,0 +1,401 @@
+<?php
+/**
+ * Created by PhpStorm.
+ * User: shad
+ * Date: 5/19/16
+ * Time: 9:12 AM
+ */
+namespace facade;
+function __autoload($className){
+    $tempArray=explode("\\",$className);
+    require_once $tempArray[0]."/".$tempArray[1].'.php';
+}
+use database\db as db;
+use manager\manager as manager;
+use office\office as office;
+use security\secureclass as secureclass;
+use interfaces\officesysteminterface as officesystemint;
+use person\student as student;
+use person\parents as parents;
+use person\teacher as teacher;
+use classes\schoolclass as schoolclass;
+use lesson\lesson as lesson;
+class facademanager implements officesystemint
+{
+    public static function conntodb()
+    {
+        $_dbconn = db::getInstance();
+        return $_dbconn;
+        exit(0);
+    }
+    public static function createstudent($studentnumber= null, $nationalcode= null, $name= null, $family= null, $cellphone= null, $address= null, $Email= null, $hometown= null, $registerdate= null, $birthday = null, $action, $conn){
+        $studentnumber = $nationalcodeErr= $nameErr= $familyErr= $phoneErr= $addressErr = $emailErr = $hometownErr = $regdateErr = $birthdayErr = $action = $connection = '';
+        if(isset($_POST['newst'])){
+            $regdate=explode('/',$_POST['regdate']);
+            $regdate=explode('-',$regdate[0]);
+            $birthday=explode('/',$_POST['birthday']);
+            $birthday=explode('-',$birthday[0]);
+                if (empty($_POST["nationalcode"]) || !secureclass::intvalidate($_POST["nationalcode"])) {
+                $nationalcodeErr = "nationalcode is required";
+            } else {
+                $nationalcode = secureclass::trimall($_POST['nationalcode']);
+                $nationalcode = secureclass::intvalidate($nationalcode);
+            }
+                if (empty($_POST["name"]) || !secureclass::namevalidate($_POST['name'])) {
+                    $nameErr = "Name is required";
+                } else {
+                    $name = secureclass::namevalidate($_POST['name']);
+                }
+                if (empty($_POST["family"]) || !secureclass::namevalidate($_POST["family"])) {
+                    $familyErr = "Sirname is required";
+                } else {
+                    $family = secureclass::namevalidate($_POST["family"]);
+                }
+                if (empty($_POST['phone']) || !secureclass::mobilephonevalidate($_POST['phone'])) {
+                    $phoneErr = "Phonenumber is required";
+                } else {
+                    $phone = secureclass::mobilephonevalidate($_POST['phone']);
+                }
+                if (empty($_POST['address']) || !secureclass::santizestring($_POST['address'])) {
+                    $addressErr = "Address is required";
+                } else {
+                    $address = secureclass::santizestring($_POST['address']);
+                }
+                if (empty($_POST['hometown']) || !secureclass::namevalidate($_POST['hometown'])) {
+                    $hometownErr = "Hometown is required";
+                } else {
+                    $hometown = secureclass::namevalidate($_POST['hometown']);
+                }
+                if (empty($_POST['email']) || !secureclass::emailvalidate($_POST['email'])) {
+                    $emailErr = "Email is required";
+                } else {
+                    $email = secureclass::emailvalidate($_POST['email']);
+                }
+                if (empty($_POST['regdate']) || !secureclass::checkdatevalidate($regdate[1], $regdate[2], $regdate[0])) {
+                    $regdateErr = "registerationdate is required";
+                } else {
+                    $registerationdate = secureclass::checkdatevalidate($regdate[1], $regdate[2], $regdate[0]);
+                }
+                if (empty($_POST['birthday']) || !secureclass::checkdatevalidate($birthday[1], $birthday[2], $birthday[0])) {
+                    $birthdayErr = "birthday is required";
+                } else {
+                    $birthday = secureclass::checkdatevalidate($birthday[1], $birthday[2], $birthday[0]);
+                }
+            if (($nationalcodeErr || $nameErr || $familyErr || $phoneErr || $addressErr || $emailErr || $hometownErr || $regdateErr || $birthdayErr) != ''){
+                office::createstudent($studentnumber= null, $nationalcodeErr, $nameErr, $familyErr, $phoneErr, $addressErr, $emailErr, $hometownErr, $regdateErr, $birthdayErr, $action, $connection= null);
+                die();
+            }
+            $stnumber = self::createstudentnumber($conn);
+            $student = new student($name, $family, $nationalcode, $phone, $address, $stnumber, $hometown, $regdate, $email);
+            try {
+                manager::createstudent($stnumber, $nationalcode, $name, $family, $phone, $address,  $email, $hometown, $registerationdate, $birthday, $action = null, $conn);
+                echo "<a href='?page=registerparent&&studentnumber=$stnumber'>Add Parents</a>";
+              return $student;
+            }catch (\PDOException $e){
+                echo "DB Exception : This student already exists<br>" . $e->getMessage();
+            }
+        }
+        else{
+            office::createstudent($studentnumber= null, $nationalcodeErr, $nameErr, $familyErr, $phoneErr, $addressErr, $emailErr, $hometownErr, $regdateErr, $action, $connection= null);
+        }
+    }
+    private function createstudentnumber($conn){
+        $stnumber = manager::laststudentnumber($conn);
+        $stnumberarr = str_split(strval($stnumber));
+        $date = date("Y");
+        $year = $stnumberarr[0].$stnumberarr[1].$stnumberarr[2].$stnumberarr[3];
+        if($year == $date){
+            $stnumber = $stnumber +1;
+        }
+        else{
+            $stnumber = intval($date) *1000;
+        }
+        return $stnumber;
+    }
+    public static function createparent($studentnumberi= null, $nationalcode= null, $name= null, $family= null, $cellphone= null, $address= null, $Email= null, $hometown= null, $registerdate= null, $relationship, $action, $conn){
+        $nationalcodeErr= $nameErr= $familyErr= $phoneErr= $addressErr = $emailErr = $hometownErr = $regdateErr = $relationshipErr = $action = $connection = '';
+        $studentnumber = manager::slectforeignkeychoices("tbl_student", "studentnumber", $conn);
+        if(isset($_POST['newprnt'])){
+            $regdate=explode('/',$_POST['regdate']);
+            $regdate=explode('-',$regdate[0]);
+            if (empty($_POST['studentnumber']) || !secureclass::intvalidate($_POST['studentnumber'])) {
+            } else {
+                $stnumber = secureclass::intvalidate($_POST['studentnumber']);
+            }
+            if (empty($_POST["nationalcode"]) || !secureclass::intvalidate($_POST["nationalcode"])) {
+                $nationalcodeErr = "A valid nationalcode is required";
+            } else {
+                $nationalcode = secureclass::trimall($_POST['nationalcode']);
+                $nationalcode = secureclass::intvalidate($nationalcode);
+            }
+            if (empty($_POST["name"]) || !secureclass::namevalidate($_POST['name'])) {
+                $nameErr = "A valid name is required";
+            } else {
+                $name = secureclass::namevalidate($_POST['name']);
+            }
+            if (empty($_POST["family"]) || !secureclass::namevalidate($_POST["family"])) {
+                $familyErr = "A valid  sirname is required";
+            } else {
+                $family = secureclass::namevalidate($_POST["family"]);
+            }
+            if (empty($_POST['phone']) || !secureclass::mobilephonevalidate($_POST['phone'])) {
+                $phoneErr = "A valid phonenumber is required";
+            } else {
+                $phone = secureclass::mobilephonevalidate($_POST['phone']);
+            }
+            if (empty($_POST['address']) || !secureclass::santizestring($_POST['address'])) {
+                $addressErr = "A valid address is required";
+            } else {
+                $address = secureclass::santizestring($_POST['address']);
+            }
+            if (!empty($_POST['hometown'])) {
+                $hometown = secureclass::namevalidate($_POST['hometown']);
+            }
+            if (empty($_POST['email']) || !secureclass::emailvalidate($_POST['email'])) {
+                $emailErr = "A valid email is required";
+            } else {
+                $email = secureclass::emailvalidate($_POST['email']);
+            }
+            if (!empty($_POST['regdate']) ) {
+                $registerationdate = secureclass::checkdatevalidate($regdate[1], $regdate[2], $regdate[0]);
+            }
+            if (!empty($_POST['relationship'])) {
+                $relationship = secureclass::namevalidate($_POST['relationship']);
+            }
+           if(($nationalcodeErr || $nameErr || $familyErr || $phoneErr || $addressErr || $emailErr || $hometownErr || $regdateErr || $relationshipErr) != '') {
+               office::createparent($studentnumber= null, $nationalcodeErr, $nameErr, $familyErr, $phoneErr, $addressErr, $emailErr, $hometownErr, $regdateErr, $relationship, $action, $connection= null);
+               die();
+            }
+            try {
+                manager::createparent($stnumber, $nationalcode, $name, $family, $phone, $address,  $email, $hometown, $registerationdate, $relationship, $action = null, $conn);
+                $stparent = new parents($name, $family, $nationalcode, $phone, $address, $stnumber, $email);
+                $stparent->setHometown($hometown);
+                $stparent->setRelationship($relationship);
+                $stparent->setRegisterationdate($registerationdate);
+                return $stparent;
+            }catch (\PDOException $e){
+                if($e->getCode() == 23000){
+                    echo "This parent already exists<br>";
+                }
+                echo $e->errorInfo[2];
+            }
+        }
+        else {
+            office::createparent($studentnumber, $nationalcodeErr = null, $nameErr = null, $familyErr = null, $phoneErr = null, $ddressErr = null, $emailErr = null, $hometownErr = null, $regdateErr = null, $relationshipErr = null, $action, $conn = null);
+        }
+    }
+    public static function createteacher($nationalcode= null, $name= null, $family= null, $cellphone= null, $address= null, $Email= null, $hometown= null, $registerdate= null, $action, $conn){
+        $nationalcodeErr= $nameErr= $familyErr= $phoneErr= $addressErr = $emailErr = $hometownErr = $regdateErr = $action = $connection = '';
+        if(isset($_POST['newteacher'])){
+            $regdate=explode('/',$_POST['regdate']);
+            $regdate=explode('-',$regdate[0]);
+            if (empty($_POST["nationalcode"]) || !secureclass::intvalidate($_POST["nationalcode"])) {
+                $nationalcodeErr = "nationalcode is required";
+            } else {
+                $nationalcode = secureclass::trimall($_POST['nationalcode']);
+                $nationalcode = secureclass::intvalidate($nationalcode);
+            }
+            if (empty($_POST["name"]) || !secureclass::namevalidate($_POST['name'])) {
+                $nameErr = "Name is required";
+            } else {
+                $name = secureclass::namevalidate($_POST['name']);
+            }
+            if (empty($_POST["family"]) || !secureclass::namevalidate($_POST["family"])) {
+                $familyErr = "Sirname is required";
+            } else {
+                $family = secureclass::namevalidate($_POST["family"]);
+            }
+            if (empty($_POST['phone']) || !secureclass::mobilephonevalidate($_POST['phone'])) {
+                $phoneErr = "Phonenumber is required";
+            } else {
+                $phone = secureclass::mobilephonevalidate($_POST['phone']);
+            }
+            if (empty($_POST['address']) || !secureclass::santizestring($_POST['address'])) {
+                $addressErr = "Address is required";
+            } else {
+                $address = secureclass::santizestring($_POST['address']);
+            }
+            if (empty($_POST['hometown']) || !secureclass::namevalidate($_POST['hometown'])) {
+                $hometownErr = "Hometown is required";
+            } else {
+                $hometown = secureclass::namevalidate($_POST['hometown']);
+            }
+            if (empty($_POST['email']) || !secureclass::emailvalidate($_POST['email'])) {
+                $emailErr = "Email is required";
+            } else {
+                $email = secureclass::emailvalidate($_POST['email']);
+            }
+            if (empty($_POST['regdate']) || !secureclass::checkdatevalidate($regdate[1], $regdate[2], $regdate[0])) {
+                $regdateErr = "registerationdate is required";
+            } else {
+                $registerationdate = secureclass::checkdatevalidate($regdate[0], $regdate[1], $regdate[2]);
+            }
+            if (($nationalcodeErr || $nationalcodeErr || $nameErr || $familyErr || $familyErr || $phoneErr || $addressErr || $addressErr || $hometownErr || $emailErr ||  $regdateErr) != ''){
+                office::createteacher($nationalcodeErr, $nameErr, $familyErr, $phoneErr, $addressErr, $emailErr, $hometownErr, $regdateErr, $action, $conn = null);
+                die();
+            }
+            $teacher = new teacher($name, $family, $nationalcode, $phone, $address, $hometown, $regdate, $email);
+            try {
+                manager::createteacher($nationalcode, $name, $family, $phone, $address,  $email, $hometown, $registerationdate, $action = null, $conn);
+                return $teacher;
+            }catch (\PDOException $e){
+                echo "DB Exception : This teacher already exists<br>" . $e->getMessage();
+            }
+        }
+        else{
+            office::createteacher($nationalcodeErr, $nameErr, $familyErr, $phoneErr, $addressErr, $emailErr, $hometownErr, $regdateErr, $action, $connection= null);
+        }
+    }
+    public static function searchdatabase($action, $field = null, $conn, $val = null){
+        if(isset($_POST['search'])) {
+            if ($_POST['field'] == 'name' || $_POST['field'] == 'family') {
+                $value = secureclass::namevalidate($_POST['value']);
+            }
+            if ($_POST['field'] == 'studentnumber' || $_POST['field'] == 'studentnumber') {
+                $value = secureclass::trimall($_POST['value']);
+                $value = secureclass::intvalidate($value);
+            }
+            if($_POST['table'] == 'student'){
+                $tbl = 'tbl_student';
+            }
+            if($_POST['table'] == 'teacher'){
+                $tbl = 'tbl_teacher';
+            }
+            manager::searchdatabase($tbl, $_POST['field'], $conn, $value);
+        }else{
+            echo office::searchdatabase($action);
+        }
+    }
+    public static function addclass($level=null, $name=null, $room=null, $teacher=null, $capacity=null, $action, $conn){
+        $nameErr = $levelErr = $roomErr = $teacherErr = $capacityErr = $action = $connection = '';
+        $teacherid = manager::slectforeignkey3choices("tbl_teacher", "name", "family", "id", $conn);
+        if(isset($_POST['newclass'])) {
+            if (empty($_POST["name"]) || !secureclass::namevalidate($_POST["name"])) {
+                $nameErr = "name is required";
+            } else {
+                $name = secureclass::namevalidate($_POST["name"]);
+            }
+            if (empty($_POST["level"]) || !secureclass::intvalidate($_POST["level"])) {
+                $levelErr = "level is required";
+
+            } else {
+                $level = secureclass::intvalidate($_POST["level"]);
+            }
+            if (empty($_POST["room"]) || !secureclass::intvalidate($_POST["room"])) {
+                $roomErr = "room is required";
+
+            } else {
+                $room = secureclass::intvalidate($_POST["room"]);
+            }
+            if (empty($_POST["id"]) || !secureclass::intvalidate($_POST["id"])) {
+                //$teacherid = "teachername is required".$teacherid;
+                $teacherErr = "true";
+            } else {
+                $teacherid = secureclass::intvalidate($_POST["id"]);
+            }
+            if (empty($_POST["capacity"]) || !secureclass::intvalidate($_POST["capacity"])) {
+                $capacityErr = "capacity is required";
+
+            } else {
+                $capacity = secureclass::intvalidate($_POST["capacity"]);
+            }
+            if (($levelErr || $nameErr || $roomErr || $teacherErr || $capacityErr)!= ''){
+                office::addclass($levelErr, $nameErr, $roomErr, $teacherid, $capacityErr, $action, $conn);
+                die();
+            }
+            try{
+                manager::addclass($level, $name , $room, $teacherid, $capacity, $action= null, $conn);
+                $schoolclass = new schoolclass($name , $level, $room);
+                $schoolclass->setTeacher($teacherid);
+                $schoolclass->setCapacity($capacity);
+                return $schoolclass;
+            }catch (\PDOException $e){
+                if($e->getCode() == 23000){
+                    echo "This class already exists<br>";
+                }
+                echo $e->errorInfo[2];
+            }
+        }else{
+            office::addclass($level, $name, $room, $teacherid, $capacity, $action, $conn);
+        }
+    }
+    public static function addlesson($namerr, $hpwErr, $codeErr, $levelErr, $action, $conn= null ){
+        $namerr = $hpwErr = $codeErr = $levelErr = $action = $connection = '';
+        if(isset($_POST['newlesson'])){
+            if (empty($_POST["name"]) || !secureclass::namevalidate($_POST['name'])) {
+                $nameErr = "Name is required";
+                office::addlesson($namerr, $hpwErr, $codeErr, $levelErr, $action, $conn= null);
+                die();
+            } else {
+                $name = secureclass::namevalidate($_POST['name']);
+            }
+            if (empty($_POST["hpw"]) || !secureclass::intvalidate($_POST["hpw"])) {
+                $hpwErr = "hours per week is required";
+                office::addlesson($namerr, $hpwErr, $codeErr, $levelErr, $action, $conn= null);
+                die();
+            } else {
+                $hpw = secureclass::trimall($_POST['hpw']);
+                $hpw = secureclass::intvalidate($hpw);
+            }
+            if (empty($_POST["code"]) || !secureclass::intvalidate($_POST["code"])) {
+                $codeErr = "code is required";
+                office::addlesson($namerr, $hpwErr, $codeErr, $levelErr, $action, $conn= null);
+                die();
+            } else {
+                $code = secureclass::trimall($_POST['code']);
+                $code = secureclass::intvalidate($code);
+            }
+            if (empty($_POST["level"]) || !secureclass::intvalidate($_POST["level"])) {
+                $levelErr = "level is required";
+                office::addlesson($namerr, $hpwErr, $codeErr, $levelErr, $action, $conn= null);
+                die();
+            } else {
+                $level = secureclass::trimall($_POST['level']);
+                $level = secureclass::intvalidate($level);
+            }
+            $lesson = new lesson($name, $hpw, $code, $level);
+            try {
+                manager::addlesson($name, $hpw, $code, $level, $action = null, $conn);
+                return $lesson;
+            }catch (\PDOException $e){
+                echo "DB Exception : This lesson already exists<br>" . $e->getMessage();
+            }
+        }
+        else{
+            office::addlesson($namerr, $hpwErr, $codeErr, $levelErr, $action, $connection= null);
+        }
+
+    }
+    public static function classification($possibleclass=null, $studentnumber=null, $action, $connection){
+        $classname = '';
+        $possibleclass = manager::slectforeignkeychoices("tbl_class", "name", $connection);
+        if(isset($_POST['classification'])) {
+            $possiblestnumber = manager::searchdatabase("tbl_student", "studentnumber", $connection, $_POST["studentnumber"]);
+            if ($possiblestnumber === false ) {
+                $studentnumber = 'required';
+                office::classification($possibleclass, $studentnumber, $action, $conn=null);
+                die();
+            } else {
+                $studentnumber = secureclass::intvalidate($_POST["studentnumber"]);
+            }
+            if (empty($_POST["name"])) {
+                echo "classname does not exist";
+                office::classification($possibleclass, $studentnumber, $action, $conn=null);
+                die();
+            } else {
+                $classname = $_POST["name"];
+            }
+            try{
+                manager::classification( $classname, $studentnumber, $action, $connection);
+            }catch (\PDOException $e){
+                if($e->getCode() == 23000){
+                    echo "This studeny already has been classified<br>";
+                }
+                echo $e->errorInfo[2];
+            }
+        }else{
+            office::classification($possibleclass, $studentnumber, $action, $connection=null);
+        }
+    }
+
+}
