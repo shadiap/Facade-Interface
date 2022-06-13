@@ -1,3 +1,3 @@
 # school
-#This is a school registeration programme
-#It's written on a MVC framework using deseign pattern for the relationship between classes
+#This is one of the classes of a school registeration software built by MVC
+#This is the Facade interface of a controller layer
